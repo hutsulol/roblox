@@ -1,53 +1,46 @@
--- InputHandler: Client-side input capture
--- Sends the player's target direction (angle) to the server based on mouse/touch position
+-- ============================================================================
+-- InputHandler.client.lua (LOCAL SCRIPT)
+-- Captures mouse/touch position and sends direction angle to server
+-- ============================================================================
+
+print("[InputHandler] Starting...")
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
-local GameConfig = require(ReplicatedStorage.GameConfig)
-
 local player = Players.LocalPlayer
-local mouse = player:GetMouse()
-local camera = workspace.CurrentCamera
 
--- Wait for remote events to be created by the server
+-- Wait for remote events
 local inputEvent = ReplicatedStorage:WaitForChild("InputEvent", 30)
+local deathEvent = ReplicatedStorage:WaitForChild("DeathEvent", 30)
 
 if not inputEvent then
-	warn("[InputHandler] Could not find InputEvent remote")
+	warn("[InputHandler] InputEvent not found! Server may not be running.")
 	return
 end
 
+print("[InputHandler] Found InputEvent remote")
+
+-- State
 local sendTimer = 0
 local lastSentAngle = 0
 local isDead = false
-
--- Listen for death events
-local deathEvent = ReplicatedStorage:WaitForChild("DeathEvent", 30)
-if deathEvent then
-	deathEvent.OnClientEvent:Connect(function()
-		isDead = true
-		-- Show death UI
-		InputHandler_showDeathScreen()
-
-		task.delay(GameConfig.RESPAWN_DELAY, function()
-			isDead = false
-			InputHandler_hideDeathScreen()
-		end)
-	end)
-end
-
--- Simple death screen UI
 local deathGui = nil
 
-function InputHandler_showDeathScreen()
+local INPUT_SEND_RATE = 1 / 30
+
+-- ============================================================================
+-- Death screen UI
+-- ============================================================================
+local function showDeathScreen()
 	if deathGui then return end
 
 	deathGui = Instance.new("ScreenGui")
 	deathGui.Name = "DeathScreen"
-	deathGui.Parent = player.PlayerGui
+	deathGui.ResetOnSpawn = false
+	deathGui.Parent = player:WaitForChild("PlayerGui")
 
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(1, 0, 1, 0)
@@ -67,54 +60,67 @@ function InputHandler_showDeathScreen()
 	label.Parent = frame
 end
 
-function InputHandler_hideDeathScreen()
+local function hideDeathScreen()
 	if deathGui then
 		deathGui:Destroy()
 		deathGui = nil
 	end
 end
 
--- Calculate the angle from the snake head toward the mouse cursor position
+if deathEvent then
+	deathEvent.OnClientEvent:Connect(function()
+		isDead = true
+		showDeathScreen()
+		task.delay(2, function()
+			isDead = false
+			hideDeathScreen()
+		end)
+	end)
+end
+
+-- ============================================================================
+-- Input: calculate angle from snake head to mouse cursor
+-- ============================================================================
 local function getTargetAngle()
-	-- Cast a ray from the camera through the mouse position onto the ground plane
+	local camera = workspace.CurrentCamera
+	if not camera then return lastSentAngle end
+
 	local mousePos = UserInputService:GetMouseLocation()
 	local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
 
-	-- Intersect with the Y=1.5 plane (snake head height)
-	local planeY = 1.5
+	-- Intersect with the Y=1.5 plane
 	if ray.Direction.Y == 0 then return lastSentAngle end
-
-	local t = (planeY - ray.Origin.Y) / ray.Direction.Y
+	local t = (1.5 - ray.Origin.Y) / ray.Direction.Y
 	if t < 0 then return lastSentAngle end
 
 	local worldPos = ray.Origin + ray.Direction * t
 
-	-- Find the snake head in the workspace
-	local snakeModel = workspace.Snakes:FindFirstChild("Snake_" .. player.Name)
-	if not snakeModel or not snakeModel.PrimaryPart then
-		return lastSentAngle
-	end
+	-- Find our snake head
+	local snakesFolder = workspace:FindFirstChild("Snakes")
+	if not snakesFolder then return lastSentAngle end
 
-	local headPos = snakeModel.PrimaryPart.Position
-	local dx = worldPos.X - headPos.X
-	local dz = worldPos.Z - headPos.Z
+	local snakeModel = snakesFolder:FindFirstChild("Snake_" .. player.Name)
+	if not snakeModel then return lastSentAngle end
 
-	-- Calculate angle (atan2 gives us the angle from the Z axis)
-	local angle = math.atan2(dx, dz)
-	return angle
+	local head = snakeModel.PrimaryPart
+	if not head then return lastSentAngle end
+
+	local dx = worldPos.X - head.Position.X
+	local dz = worldPos.Z - head.Position.Z
+	return math.atan2(dx, dz)
 end
 
--- Send input to server at a fixed rate
+-- ============================================================================
+-- Send input at fixed rate
+-- ============================================================================
 RunService.RenderStepped:Connect(function(dt)
 	if isDead then return end
 
 	sendTimer = sendTimer + dt
-	if sendTimer >= GameConfig.INPUT_SEND_RATE then
+	if sendTimer >= INPUT_SEND_RATE then
 		sendTimer = 0
 
 		local angle = getTargetAngle()
-
-		-- Only send if the angle has changed meaningfully
 		if math.abs(angle - lastSentAngle) > 0.02 then
 			lastSentAngle = angle
 			inputEvent:FireServer(angle)
@@ -122,26 +128,31 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
--- Touch input support: use touch position instead of mouse
+-- Touch support
 if UserInputService.TouchEnabled then
-	local touchAngle = 0
 	UserInputService.TouchMoved:Connect(function(input)
+		if isDead then return end
+
+		local camera = workspace.CurrentCamera
+		if not camera then return end
+
 		local touchPos = input.Position
 		local ray = camera:ViewportPointToRay(touchPos.X, touchPos.Y)
-		local planeY = 1.5
 		if ray.Direction.Y == 0 then return end
-		local t = (planeY - ray.Origin.Y) / ray.Direction.Y
+		local t = (1.5 - ray.Origin.Y) / ray.Direction.Y
 		if t < 0 then return end
 		local worldPos = ray.Origin + ray.Direction * t
 
-		local snakeModel = workspace.Snakes:FindFirstChild("Snake_" .. player.Name)
+		local snakesFolder = workspace:FindFirstChild("Snakes")
+		if not snakesFolder then return end
+		local snakeModel = snakesFolder:FindFirstChild("Snake_" .. player.Name)
 		if not snakeModel or not snakeModel.PrimaryPart then return end
 
 		local headPos = snakeModel.PrimaryPart.Position
-		touchAngle = math.atan2(worldPos.X - headPos.X, worldPos.Z - headPos.Z)
-		lastSentAngle = touchAngle
-		inputEvent:FireServer(touchAngle)
+		local angle = math.atan2(worldPos.X - headPos.X, worldPos.Z - headPos.Z)
+		lastSentAngle = angle
+		inputEvent:FireServer(angle)
 	end)
 end
 
-print("[InputHandler] Client input system ready")
+print("[InputHandler] Ready")

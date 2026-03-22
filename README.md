@@ -6,30 +6,53 @@ A multiplayer snake game for Roblox where players control snakes, collect Pirate
 
 ```
 src/
-├── ReplicatedStorage/          # Shared modules & templates
-│   ├── GameConfig.lua          # All configurable game parameters
-│   ├── SnakeTemplate.lua       # Snake model/part factory
-│   └── CoinTemplate.lua        # PirateCoin part factory
-├── ServerScriptService/        # Server-side logic (authoritative)
-│   ├── ServerInit.server.lua   # Entry point - bootstraps the game
-│   ├── GameManager.lua         # Orchestrator: arena, players, remotes
-│   ├── SnakeController.lua     # Snake movement, collision, growth, death
-│   └── CoinSpawner.lua         # Coin spawning, collection, death drops
-└── StarterPlayerScripts/       # Client-side scripts
-    ├── InputHandler.client.lua # Mouse/touch input → server direction
-    └── CameraController.client.lua # Top-down camera following snake
+├── ReplicatedStorage/              # Shared modules (OPTIONAL, not required)
+│   ├── GameConfig.lua              # Config reference (ModuleScript)
+│   ├── SnakeTemplate.lua           # Snake factory reference (ModuleScript)
+│   └── CoinTemplate.lua            # Coin factory reference (ModuleScript)
+├── ServerScriptService/            # Server-side logic
+│   └── ServerInit.server.lua       # ALL server logic in one file (Script)
+└── StarterPlayerScripts/           # Client-side scripts
+    ├── InputHandler.client.lua     # Mouse/touch input (LocalScript)
+    └── CameraController.client.lua # Top-down camera (LocalScript)
 ```
 
 ## Setup in Roblox Studio
 
-1. Open Roblox Studio and create a new Baseplate place
-2. Delete all default objects from Workspace (Baseplate, SpawnLocation, etc.)
-3. Copy each `.lua` file into the matching Roblox service:
-   - `ReplicatedStorage/*.lua` → ModuleScripts in ReplicatedStorage
-   - `ServerScriptService/*.lua` → Scripts/ModuleScripts in ServerScriptService
-   - `StarterPlayerScripts/*.lua` → LocalScripts in StarterPlayer > StarterPlayerScripts
-4. **Important**: `ServerInit.server.lua` must be a **Script** (not ModuleScript). All other server files are **ModuleScripts**. Client files are **LocalScripts**.
-5. Play to test!
+### CRITICAL: Script types matter!
+
+| File | Location | Script Type |
+|------|----------|-------------|
+| `ServerInit.server.lua` | ServerScriptService | **Script** |
+| `InputHandler.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** |
+| `CameraController.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** |
+| `GameConfig.lua` | ReplicatedStorage | ModuleScript (optional) |
+| `SnakeTemplate.lua` | ReplicatedStorage | ModuleScript (optional) |
+| `CoinTemplate.lua` | ReplicatedStorage | ModuleScript (optional) |
+
+### Steps
+
+1. Open Roblox Studio and create a new place (Baseplate is fine, it gets auto-removed)
+2. In **ServerScriptService**: Right-click > Insert Object > **Script**. Name it `ServerInit`. Paste contents of `ServerInit.server.lua`
+3. In **StarterPlayer > StarterPlayerScripts**: Right-click > Insert Object > **LocalScript**. Name it `InputHandler`. Paste contents of `InputHandler.client.lua`
+4. Repeat for `CameraController` as a **LocalScript**
+5. The ReplicatedStorage modules are **optional** — all config is inlined in ServerInit
+6. Click **Play** to test!
+
+### What you should see
+
+- Output window shows `[Loongoliers] SERVER FULLY INITIALIZED`
+- A dark floor (500x500) appears with red boundary walls
+- Gold coins scattered across the map
+- Your snake spawns after ~2 seconds
+- Mouse controls direction, snake auto-moves forward
+
+### Troubleshooting
+
+- **Nothing happens**: Check the Output window (View > Output) for errors
+- **No floor/walls**: Make sure ServerInit is a **Script** (not ModuleScript, not LocalScript)
+- **Can't move**: Make sure InputHandler is a **LocalScript** in StarterPlayerScripts
+- **Camera stuck**: Make sure CameraController is a **LocalScript** in StarterPlayerScripts
 
 ## Features
 
@@ -40,13 +63,3 @@ src/
 - **Top-down camera**: Smooth lerp-based camera following the snake head
 - **Touch support**: Works on mobile devices
 - **Leaderstats**: Coins and Length displayed on the player list
-- **Configurable**: All parameters in GameConfig.lua
-
-## Configuration
-
-Edit `src/ReplicatedStorage/GameConfig.lua` to tweak:
-- Map size, snake speed, turn speed
-- Coin spawn rate, max coins
-- Initial/max snake length
-- Death drop amounts
-- Camera height and smoothing
