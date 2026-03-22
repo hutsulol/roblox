@@ -494,23 +494,23 @@ local function checkCoinCollisions()
 	local coins = CollectionService:GetTagged("PirateCoin")
 
 	for _, snake in pairs(snakes) do
-		if not snake.alive then continue end
+		if snake.alive then
+			local headPos = snake.head.Position
+			local collectRadius = Config.HEAD_SIZE / 2 + Config.COIN_SIZE / 2
 
-		local headPos = snake.head.Position
-		local collectRadius = Config.HEAD_SIZE / 2 + Config.COIN_SIZE / 2
+			for _, coin in ipairs(coins) do
+				if coin.Parent and (coin.Position - headPos).Magnitude < collectRadius then
+					removeCoin(coin)
+					snake.coinsCollected = snake.coinsCollected + 1
 
-		for _, coin in ipairs(coins) do
-			if coin.Parent and (coin.Position - headPos).Magnitude < collectRadius then
-				removeCoin(coin)
-				snake.coinsCollected = snake.coinsCollected + 1
+					local leaderstats = snake.player:FindFirstChild("leaderstats")
+					if leaderstats then
+						local coinsVal = leaderstats:FindFirstChild("Coins")
+						if coinsVal then coinsVal.Value = snake.coinsCollected end
+					end
 
-				local leaderstats = snake.player:FindFirstChild("leaderstats")
-				if leaderstats then
-					local coinsVal = leaderstats:FindFirstChild("Coins")
-					if coinsVal then coinsVal.Value = snake.coinsCollected end
+					addSegment(snake)
 				end
-
-				addSegment(snake)
 			end
 		end
 	end
@@ -520,29 +520,29 @@ local function checkSnakeCollisions()
 	local deadSnakes = {}
 
 	for userId, snake in pairs(snakes) do
-		if not snake.alive then continue end
-		local headPos = snake.head.Position
-		local headRadius = Config.HEAD_SIZE / 2
+		if snake.alive then
+			local headPos = snake.head.Position
+			local headRadius = Config.HEAD_SIZE / 2
 
-		for otherUserId, otherSnake in pairs(snakes) do
-			if otherUserId == userId or not otherSnake.alive then continue end
-
-			-- Head-to-head
-			local headDist = (otherSnake.head.Position - headPos).Magnitude
-			if headDist < headRadius * 2 then
-				local myLen = #snake.segments
-				local otherLen = #otherSnake.segments
-				if myLen <= otherLen then deadSnakes[userId] = true end
-				if otherLen <= myLen then deadSnakes[otherUserId] = true end
-				continue
-			end
-
-			-- Head-to-body
-			for _, segment in ipairs(otherSnake.segments) do
-				local segRadius = Config.SEGMENT_SIZE / 2
-				if (segment.Position - headPos).Magnitude < (headRadius + segRadius) * 0.8 then
-					deadSnakes[userId] = true
-					break
+			for otherUserId, otherSnake in pairs(snakes) do
+				if otherUserId ~= userId and otherSnake.alive then
+					-- Head-to-head
+					local headDist = (otherSnake.head.Position - headPos).Magnitude
+					if headDist < headRadius * 2 then
+						local myLen = #snake.segments
+						local otherLen = #otherSnake.segments
+						if myLen <= otherLen then deadSnakes[userId] = true end
+						if otherLen <= myLen then deadSnakes[otherUserId] = true end
+					else
+						-- Head-to-body
+						for _, segment in ipairs(otherSnake.segments) do
+							local segRadius = Config.SEGMENT_SIZE / 2
+							if (segment.Position - headPos).Magnitude < (headRadius + segRadius) * 0.8 then
+								deadSnakes[userId] = true
+								break
+							end
+						end
+					end
 				end
 			end
 		end

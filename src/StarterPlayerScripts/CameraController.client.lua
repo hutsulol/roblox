@@ -57,10 +57,8 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 
 	-- Always update camera (even when dead, keep last position)
-	camera.CFrame = CFrame.new(
-		currentCameraPos,
-		Vector3.new(currentCameraPos.X, 0, currentCameraPos.Z)
-	)
+	-- Use CFrame.Angles to avoid gimbal lock when looking straight down
+	camera.CFrame = CFrame.new(currentCameraPos) * CFrame.Angles(-math.pi / 2, 0, 0)
 end)
 
 print("[CameraController] Ready")
