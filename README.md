@@ -1,65 +1,64 @@
-# Loongoliers - Slither.io-style Roblox Game
+# Loongoliers — Slither.io for Roblox
 
-A multiplayer snake game for Roblox where players control snakes, collect PirateCoins, grow in length, and drop coins on death.
+## SETUP (READ CAREFULLY)
 
-## Project Structure
+You only need **3 scripts**. The script TYPE matters — wrong type = nothing runs.
+
+### Step-by-step in Roblox Studio:
+
+#### 1. ServerInit (SERVER SCRIPT)
+- In Explorer, right-click **ServerScriptService**
+- Click **Insert Object** > **Script** (the plain one, NOT ModuleScript)
+- Rename it to `ServerInit`
+- Paste the contents of `src/ServerScriptService/ServerInit.lua`
+
+#### 2. InputHandler (LOCAL SCRIPT)
+- In Explorer, expand **StarterPlayer** > right-click **StarterPlayerScripts**
+- Click **Insert Object** > **LocalScript**
+- Rename it to `InputHandler`
+- Paste the contents of `src/StarterPlayerScripts/InputHandler.lua`
+
+#### 3. UIController (LOCAL SCRIPT)
+- In same **StarterPlayerScripts** folder
+- Click **Insert Object** > **LocalScript**
+- Rename it to `UIController`
+- Paste the contents of `src/StarterPlayerScripts/UIController.lua`
+
+#### 4. DELETE everything else
+- Delete any old scripts from previous attempts
+- Delete old ModuleScripts from ReplicatedStorage (GameConfig, SnakeTemplate, CoinTemplate)
+- Make sure ServerScriptService has ONLY `ServerInit`
+- Make sure StarterPlayerScripts has ONLY `InputHandler` and `UIController`
+
+### How to verify script types by icon:
+
+| Script type | Icon | Runs by itself? |
+|-------------|------|-----------------|
+| **Script** | Grey scroll icon | YES (on server) |
+| **LocalScript** | Blue icon with monitor/screen | YES (on client) |
+| ModuleScript | Orange/brown puzzle icon | NO (needs require) |
+
+### What you should see when you press Play:
+
+1. **Output window** (View > Output): lots of `[Server]` messages
+2. **Black floor** with 4 red walls
+3. **Yellow coins** scattered everywhere
+4. **Your snake** (colored ball + white/colored segments) appears after 2 seconds
+5. **Mouse** controls snake direction
+6. **"Coins: 0"** display top-left
+7. **"SHOP"** button top-right
+8. Touching coins grows your snake and increases counter
+
+### Architecture
 
 ```
-src/
-├── ReplicatedStorage/              # Shared modules (OPTIONAL, not required)
-│   ├── GameConfig.lua              # Config reference (ModuleScript)
-│   ├── SnakeTemplate.lua           # Snake factory reference (ModuleScript)
-│   └── CoinTemplate.lua            # Coin factory reference (ModuleScript)
-├── ServerScriptService/            # Server-side logic
-│   └── ServerInit.server.lua       # ALL server logic in one file (Script)
-└── StarterPlayerScripts/           # Client-side scripts
-    ├── InputHandler.client.lua     # Mouse/touch input (LocalScript)
-    └── CameraController.client.lua # Top-down camera (LocalScript)
+ServerScriptService/
+  ServerInit          <- Script (ALL server logic, zero require() calls)
+
+StarterPlayer/
+  StarterPlayerScripts/
+    InputHandler      <- LocalScript (mouse → angle → server)
+    UIController      <- LocalScript (camera + coins UI + shop + death screen)
 ```
 
-## Setup in Roblox Studio
-
-### CRITICAL: Script types matter!
-
-| File | Location | Script Type |
-|------|----------|-------------|
-| `ServerInit.server.lua` | ServerScriptService | **Script** |
-| `InputHandler.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** |
-| `CameraController.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** |
-| `GameConfig.lua` | ReplicatedStorage | ModuleScript (optional) |
-| `SnakeTemplate.lua` | ReplicatedStorage | ModuleScript (optional) |
-| `CoinTemplate.lua` | ReplicatedStorage | ModuleScript (optional) |
-
-### Steps
-
-1. Open Roblox Studio and create a new place (Baseplate is fine, it gets auto-removed)
-2. In **ServerScriptService**: Right-click > Insert Object > **Script**. Name it `ServerInit`. Paste contents of `ServerInit.server.lua`
-3. In **StarterPlayer > StarterPlayerScripts**: Right-click > Insert Object > **LocalScript**. Name it `InputHandler`. Paste contents of `InputHandler.client.lua`
-4. Repeat for `CameraController` as a **LocalScript**
-5. The ReplicatedStorage modules are **optional** — all config is inlined in ServerInit
-6. Click **Play** to test!
-
-### What you should see
-
-- Output window shows `[Loongoliers] SERVER FULLY INITIALIZED`
-- A dark floor (500x500) appears with red boundary walls
-- Gold coins scattered across the map
-- Your snake spawns after ~2 seconds
-- Mouse controls direction, snake auto-moves forward
-
-### Troubleshooting
-
-- **Nothing happens**: Check the Output window (View > Output) for errors
-- **No floor/walls**: Make sure ServerInit is a **Script** (not ModuleScript, not LocalScript)
-- **Can't move**: Make sure InputHandler is a **LocalScript** in StarterPlayerScripts
-- **Camera stuck**: Make sure CameraController is a **LocalScript** in StarterPlayerScripts
-
-## Features
-
-- **Server-authoritative**: All movement, collision, and coin logic runs on the server
-- **Smooth snake movement**: Position history system for fluid tail following
-- **Coin collection & growth**: Collect PirateCoins to grow longer
-- **Death & coin drops**: Dying scatters coins for other players to collect
-- **Top-down camera**: Smooth lerp-based camera following the snake head
-- **Touch support**: Works on mobile devices
-- **Leaderstats**: Coins and Length displayed on the player list
+That's it. 3 files. No modules. No require(). No chains.
